@@ -57,7 +57,7 @@ void conn_recv_isr() {
  * uint8_t buffer[4] = {0x00, 0x01, 0x02, 0x03};<br> 
  * SERIAL_SEND(buffer, 4);
  */
-#define SERIAL_SEND(buffer, len) { uint8_t i=0; do { conn.putc(buffer[i++]); } while(i<len); }
+#define SERIAL_SEND(buffer, len) { uint8_t i=0; do { conn._putc(buffer[i++]); } while(i<len); }
 
 /**
  * Waits for receiving number of <b>len</b> bytes of data over serial and loads
@@ -76,7 +76,7 @@ void conn_recv_isr() {
  * uint8_t buffer[12];<br> 
  * SERIAL_RECV_BLOCKING(buffer, 12);
  */
-#define SERIAL_RECV_BLOCKING(buffer, len) { uint8_t i=0; do { buffer[i++] = conn.getc(); } while(i< len); }
+#define SERIAL_RECV_BLOCKING(buffer, len) { uint8_t i=0; do { buffer[i++] = conn._getc(); } while(i< len); }
 
 /**
  * Reads the number of <b>len</b> bytes from internal buffer and loads them into 

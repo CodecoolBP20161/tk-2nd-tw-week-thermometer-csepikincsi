@@ -57,7 +57,6 @@ public:
      */
     Serial(PinName tx, PinName rx, const char *name=NULL);
 
-protected:
     virtual int _getc();
     virtual int _putc(int c);
 };
