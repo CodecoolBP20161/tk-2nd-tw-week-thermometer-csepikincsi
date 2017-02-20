@@ -3,27 +3,22 @@
 #include "codecool/codecool_i2c.h"
 #include "codecool/codecool_lcd.h"
 #include "codecool/codecool_serial.h"
+void sendData(uint8_t *sending);
 
 #define LM75_ADDRESS 0x90
 
-void sendData() {
-	LCD_CLS();
-	LCD_LOCATE(0, 0);
-	LCD_PRINTF("senddattaaaa");
-	SERIAL_BAUD(9600);
-	SERIAL_SET_NON_BLOCKING();
-
-	uint8_t buffer[64];
-	memset(buffer, 0x00, sizeof(buffer));
+void sendData(uint8_t *sending) {
+	float temper;
+	int8_t intpart = (int8_t) sending[0];
+	temper = intpart + 0.5f * ((sending[1]&0x80) >> 7);
 
 	LCD_CLS();
 	LCD_LOCATE(0, 0);
-	LCD_PRINTF("starting main loop");
-
+	LCD_PRINTF("temperature: %i", temper);
+/*
 	while (1) {
 
 		// sending hello there message over UART
-		strncpy((char*)buffer, "Hello there!", 12);
 		SERIAL_SEND(buffer, strlen((char*)buffer));
 		LCD_CLS();
 		LCD_LOCATE(0, 0);
@@ -41,7 +36,7 @@ void sendData() {
 		LCD_PRINTF("Recived: %s", buffer);
 
 		wait(5);
-	}
+	}*/
 
 }
 
@@ -80,11 +75,21 @@ int main() {
 
         // add fraction part to the float number
         temp = _int_part + 0.5f * ((buffer[1]&0x80) >> 7);
+        uint8_t *sending;
+        sending = buffer;
 
-        // debug temperature value
+        float temper;
+        int8_t intpart = (int8_t) sending[0];
+		temper = intpart + 0.5f * ((sending[1]&0x80) >> 7);
+
+		// debug temperature value
         LCD_CLS();
         LCD_LOCATE(0, 0);
-        sendData();
+        LCD_PRINTF("temperature this : %0.1f", temp);
+        LCD_LOCATE(0, 10);
+        LCD_PRINTF("sending this : %0.1f", temper);
+        wait(2);
+        sendData(sending);
         wait(0.2);
     }
 }
