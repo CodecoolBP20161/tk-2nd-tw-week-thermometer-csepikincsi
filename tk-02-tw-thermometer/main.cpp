@@ -3,9 +3,27 @@
 #include "codecool/codecool_i2c.h"
 #include "codecool/codecool_lcd.h"
 #include "codecool/codecool_serial.h"
+#include "codecool/codecool_joystick.h"
+#include "codecool/codecool_pot.h"
+
+#define round(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
+#define temp_modify(x) (x-0.5)*20
 
 #define LM75_ADDRESS 0x90
 
+void sendData(uint8_t buffer);
+
+//Sending Data to another device through URAT, and printing the sent Data to the LCD screen.
+void sendData(uint8_t *buffer) {
+
+    SERIAL_SEND(buffer, 16);
+	LCD_CLS();
+	LCD_LOCATE(20, 10);
+	LCD_PRINTF("--SENDING DATA--");
+	LCD_LOCATE(43, 0);
+	LCD_PRINTF(" %0.1f C", ((int8_t) buffer[0]) + 0.5f * ((buffer[1]&0x80) >> 7));
+	wait(2);
+}
 
 int main() {
 	SERIAL_BAUD(9600);
@@ -16,12 +34,11 @@ int main() {
 
     // clear LCD and display a welcome message.
     LCD_CLS();
-    LCD_LOCATE(0, 0);
+    LCD_LOCATE(0, 10);
     LCD_PRINTF("mbed application started.");
     wait(2);
 
     uint8_t buffer[16];
-    float temp;
 
     while (true) {
         // first, write target address to I2C
@@ -34,27 +51,51 @@ int main() {
         // receiving 2 bytes from sensor
         I2C_READ(LM75_ADDRESS, buffer, 2);
 
-        // D15            D14  D13  D12  D11 D10 D9  D8  D7    D6 D5 D4 D3 D2 D1 D0
-        // Sign bit       MSB                            LSB
-        // 1 = Negative   64°C 32°C 16°C 8°C 4°C 2°C 1°C 0.5°C X  X  X  X  X  X  X
-        // 0 = Positive
+        float temp = (int8_t) buffer[0] + 0.5f * ((buffer[1]&0x80) >> 7);
+        buffer[0] += round(temp_modify(POT1_READ));
+		// if JOYSTICK is pushed, it calls the sendData method to send the current temp.
+        while(JOYSTICK_PUSHED) {
+        	sendData(buffer);
+        }
+        while(JOYSTICK_LEFT) {
+        	uint8_t data[32];
+        	//float converted from the buffer
+			float f = ((int8_t) buffer[0]) + 0.5f * ((buffer[1]&0x80) >> 7);
+			//copy float to the 32bit size data
+			memcpy(data, &f, sizeof f);
 
-        // get integer part of the temperature
-        int8_t _int_part = (int8_t) buffer[0];
+        	LCD_CLS();
+        	LCD_LOCATE(0, 0);
+        	LCD_PRINTF("buffer : %.1f", f);
+        	wait(3);
 
-        // add fraction part to the float number
-        temp = _int_part + 0.5f * ((buffer[1]&0x80) >> 7);
 
-		// debug temperature value
-        LCD_CLS();
-        LCD_LOCATE(0, 0);
-        LCD_PRINTF("temperature this : %0.1f", temp);
+        	// sending data
+			SERIAL_SEND(data, 32);
+			LCD_CLS();
+			LCD_LOCATE(0, 0);
+			LCD_PRINTF("Sending buffer");
+			wait(2);
 
-		// sending hello there message over UART
-		SERIAL_SEND(buffer, strlen((char*)buffer));
+		    uint8_t rec[32];
+			// read message and copy to the float g
+			memset(rec, 0x00, sizeof(rec));
+			SERIAL_RECV(rec, 32);
+			float g = 0.0f;
+			memcpy(&g, rec, sizeof g);
+
+			LCD_CLS();
+			LCD_LOCATE(0, 0);
+			LCD_PRINTF("Recived: %.1f", g);
+
+			wait(3);
+
+        }
 		LCD_CLS();
 		LCD_LOCATE(0, 0);
-		LCD_PRINTF("Sent: %s", buffer);
-		wait(2);
+		LCD_PRINTF("Temperature: %0.1f", temp);
+		LCD_LOCATE(0, 10);
+		LCD_PRINTF("Modify : %0.1f", (temp + round(temp_modify(POT1_READ))));
+		wait(0.2);
     }
 }
